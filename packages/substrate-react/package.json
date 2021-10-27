@@ -1,0 +1,22 @@
+{
+  "name": "@litentry/substrate-react",
+  "version": "0.0.0",
+  "description": "React hooks & context for use with substrate based dApps",
+  "main": "dist/index.js",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rm -rf ./dist && tsc",
+    "watch": "tsc --watch",
+    "postinstall": "yarn build"
+  },
+  "dependencies": {
+    "@litentry/type-definitions": "0.0.0",
+    "@polkadot/api": "^6.5.2",
+    "@polkadot/extension-dapp": "^0.40.4",
+    "@polkadot/ui-keyring": "^0.86.2",
+    "react": "^17.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.33"
+  }
+}
