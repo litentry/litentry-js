@@ -3,15 +3,16 @@
   "version": "0.0.0",
   "description": "Litenry Type Definitions for use with @polkadot/api",
   "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "license": "Apache-2.0",
   "scripts": {
     "build": "rm -rf ./dist && tsc",
     "watch": "tsc --watch",
     "json": "ts-node ./scripts/generate-json.ts",
-    "postinstall": "yarn build && yarn json",
+    "postinstall": "yarn build",
     "prepublish": "yarn json"
   },
   "devDependencies": {
-    "@polkadot/types": "^6.4.2"
+    "@polkadot/types": "^6.5.2"
   }
 }
