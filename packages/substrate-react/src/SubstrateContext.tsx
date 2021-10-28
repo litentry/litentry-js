@@ -1,13 +1,15 @@
+import type { ApiOptions } from '@polkadot/api/types';
+import type { Unsubcall } from '@polkadot/extension-inject/types';
 import {
   createContext,
-  Dispatch,
   ReactNode,
   useContext,
+  useEffect,
   useReducer,
 } from 'react';
 import { ApiRx } from '@polkadot/api';
-import type { ApiOptions } from '@polkadot/api/types';
-import keyring, { Keyring } from '@polkadot/ui-keyring';
+import { Keyring } from '@polkadot/ui-keyring';
+import { connectApiRx, loadAccounts } from '@litentry/substrate-utils';
 
 const INITIAL_STATE: State = {
   api: null,
@@ -46,7 +48,7 @@ enum ActionType {
   API_DISCONNECT = 'API_DISCONNECT',
   API_ERROR = 'API_ERROR',
   API_READY = 'API_READY',
-  KEYRING_LOAD = 'KEYRING_LOAD',
+  KEYRING_INIT = 'KEYRING_INIT',
   KEYRING_READY = 'KEYRING_READY',
   KEYRING_ERROR = 'KEYRING_ERROR',
 }
@@ -58,7 +60,7 @@ type Action =
   | { type: ActionType.API_INIT }
   | { type: ActionType.API_READY }
   | { type: ActionType.KEYRING_ERROR; payload: unknown }
-  | { type: ActionType.KEYRING_LOAD }
+  | { type: ActionType.KEYRING_INIT }
   | { type: ActionType.KEYRING_READY; payload: Keyring };
 
 type State = {
@@ -87,7 +89,7 @@ const reducer = (state: State, action: Action) => {
     case ActionType.API_ERROR:
       return { ...state, apiState: ApiState.ERROR, apiError: action.payload };
 
-    case ActionType.KEYRING_LOAD:
+    case ActionType.KEYRING_INIT:
       return { ...state, keyringState: KeyringState.LOADING };
 
     case ActionType.KEYRING_READY:
@@ -109,67 +111,6 @@ const reducer = (state: State, action: Action) => {
   }
 };
 
-function connectApi(
-  state: State,
-  dispatch: Dispatch<Action>,
-  apiOptions: ApiOptions
-): void {
-  const { apiState } = state;
-
-  if (apiState) return;
-
-  dispatch({ type: ActionType.API_INIT });
-
-  const api = new ApiRx(apiOptions);
-
-  api.on('connected', () => {
-    dispatch({ type: ActionType.API_CONNECT, payload: api });
-
-    api.isReady.subscribe(() => dispatch({ type: ActionType.API_READY }));
-  });
-
-  api.on('ready', () => dispatch({ type: ActionType.API_READY }));
-
-  api.on('disconnected', () => dispatch({ type: ActionType.API_DISCONNECT }));
-
-  api.on('error', (err: unknown) =>
-    dispatch({ type: ActionType.API_ERROR, payload: err })
-  );
-}
-
-function loadAccounts(
-  state: State,
-  dispatch: Dispatch<Action>,
-  appName: string,
-  loadDevelopmentAccounts: boolean
-): void {
-  const asyncLoadAccounts = async () => {
-    dispatch({ type: ActionType.KEYRING_LOAD });
-    try {
-      const { web3Enable, web3AccountsSubscribe } = await import(
-        '@polkadot/extension-dapp'
-      );
-
-      await web3Enable(appName);
-
-      web3AccountsSubscribe((allAccounts) => {
-        keyring.loadAll(
-          { isDevelopment: loadDevelopmentAccounts },
-          allAccounts
-        );
-        dispatch({ type: ActionType.KEYRING_READY, payload: keyring });
-      });
-    } catch (e) {
-      dispatch({ type: ActionType.KEYRING_ERROR, payload: e });
-    }
-  };
-
-  const { keyringState } = state;
-  if (keyringState) return;
-
-  asyncLoadAccounts();
-}
-
 export const SubstrateContext = createContext<State>(INITIAL_STATE);
 
 export function SubstrateProvider({
@@ -180,8 +121,44 @@ export function SubstrateProvider({
 }: SubstrateProviderProps): JSX.Element {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
-  connectApi(state, dispatch, apiOptions);
-  loadAccounts(state, dispatch, appName, loadDevelopmentAccounts);
+  useEffect(() => {
+    if (!state.apiState) {
+      dispatch({ type: ActionType.API_INIT });
+
+      connectApiRx({
+        apiOptions,
+        onConnected: (api) =>
+          dispatch({ type: ActionType.API_CONNECT, payload: api }),
+        onReady: () => dispatch({ type: ActionType.API_READY }),
+        onDisconnected: () => dispatch({ type: ActionType.API_DISCONNECT }),
+        onError: (err) =>
+          dispatch({ type: ActionType.API_ERROR, payload: err }),
+      });
+    }
+  }, [state.apiState]);
+
+  useEffect(() => {
+    let unsub: Unsubcall | void;
+
+    if (!state.keyringState) {
+      dispatch({ type: ActionType.KEYRING_INIT });
+
+      loadAccounts({
+        appName,
+        loadDevelopmentAccounts,
+        subscribe: (keyring) =>
+          dispatch({ type: ActionType.KEYRING_READY, payload: keyring }),
+      })
+        .then((_unsub) => (unsub = _unsub))
+        .catch((err) =>
+          dispatch({ type: ActionType.KEYRING_ERROR, payload: err })
+        );
+    }
+
+    return () => {
+      unsub && unsub();
+    };
+  }, [state.keyringState]);
 
   return (
     <SubstrateContext.Provider value={state}>

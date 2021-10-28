@@ -1,7 +1,7 @@
 {
-  "name": "@litentry/substrate-react",
+  "name": "@litentry/substrate-utils",
   "version": "0.0.0",
-  "description": "React hooks & context for use with substrate based dApps",
+  "description": "JS utilities for use with substrate based dApps",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
   "license": "Apache-2.0",
@@ -11,14 +11,8 @@
     "postinstall": "yarn build"
   },
   "dependencies": {
-    "@litentry/substrate-utils": "0.0.0",
-    "@litentry/type-definitions": "0.0.0",
     "@polkadot/api": "^6.5.2",
     "@polkadot/extension-dapp": "^0.40.4",
-    "@polkadot/ui-keyring": "^0.86.2",
-    "react": "^17.0.2"
-  },
-  "devDependencies": {
-    "@types/react": "^17.0.33"
+    "@polkadot/ui-keyring": "^0.86.2"
   }
 }
