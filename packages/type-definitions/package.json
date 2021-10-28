@@ -11,8 +11,5 @@
     "json": "ts-node ./scripts/generate-json.ts",
     "postinstall": "yarn build",
     "prepublish": "yarn json"
-  },
-  "devDependencies": {
-    "@polkadot/types": "^6.5.2"
   }
 }
