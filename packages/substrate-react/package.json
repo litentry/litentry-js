@@ -15,7 +15,6 @@
     "@litentry/type-definitions": "0.0.0",
     "@polkadot/api": "^6.5.2",
     "@polkadot/extension-dapp": "^0.40.4",
-    "@polkadot/ui-keyring": "^0.86.2",
     "react": "^17.0.2"
   },
   "devDependencies": {

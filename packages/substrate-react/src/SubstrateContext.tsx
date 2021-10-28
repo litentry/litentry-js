@@ -1,5 +1,8 @@
 import type { ApiOptions } from '@polkadot/api/types';
-import type { Unsubcall } from '@polkadot/extension-inject/types';
+import type {
+  Unsubcall,
+  InjectedAccountWithMeta,
+} from '@polkadot/extension-inject/types';
 import {
   createContext,
   ReactNode,
@@ -8,16 +11,15 @@ import {
   useReducer,
 } from 'react';
 import { ApiRx } from '@polkadot/api';
-import { Keyring } from '@polkadot/ui-keyring';
 import { connectApiRx, loadAccounts } from '@litentry/substrate-utils';
 
 const INITIAL_STATE: State = {
   api: null,
   apiError: null,
   apiState: null,
-  keyring: null,
-  keyringError: null,
-  keyringState: null,
+  accounts: null,
+  extensionError: null,
+  extensionState: null,
 };
 
 type SubstrateProviderProps = {
@@ -26,6 +28,7 @@ type SubstrateProviderProps = {
   appName?: string;
   loadDevelopmentAccounts?: boolean;
   network?: string;
+  ss58Format?: number;
 };
 
 enum ApiState {
@@ -36,7 +39,7 @@ enum ApiState {
   READY = 'READY',
 }
 
-enum KeyringState {
+enum ExtensionState {
   ERROR = 'ERROR',
   LOADING = 'LOADING',
   READY = 'READY',
@@ -48,9 +51,9 @@ enum ActionType {
   API_DISCONNECT = 'API_DISCONNECT',
   API_ERROR = 'API_ERROR',
   API_READY = 'API_READY',
-  KEYRING_INIT = 'KEYRING_INIT',
-  KEYRING_READY = 'KEYRING_READY',
-  KEYRING_ERROR = 'KEYRING_ERROR',
+  EXTENSION_INIT = 'EXTENSION_INIT',
+  EXTENSION_READY = 'EXTENSION_READY',
+  EXTENSION_ERROR = 'EXTENSION_ERROR',
 }
 
 type Action =
@@ -59,17 +62,17 @@ type Action =
   | { type: ActionType.API_ERROR; payload: unknown }
   | { type: ActionType.API_INIT }
   | { type: ActionType.API_READY }
-  | { type: ActionType.KEYRING_ERROR; payload: unknown }
-  | { type: ActionType.KEYRING_INIT }
-  | { type: ActionType.KEYRING_READY; payload: Keyring };
+  | { type: ActionType.EXTENSION_ERROR; payload: unknown }
+  | { type: ActionType.EXTENSION_INIT }
+  | { type: ActionType.EXTENSION_READY; payload: InjectedAccountWithMeta[] };
 
 type State = {
   api: ApiRx | null;
   apiError: unknown | null;
   apiState: ApiState | null;
-  keyring: Keyring | null;
-  keyringError: unknown | null;
-  keyringState: KeyringState | null;
+  accounts: InjectedAccountWithMeta[] | null;
+  extensionError: unknown | null;
+  extensionState: ExtensionState | null;
 };
 
 const reducer = (state: State, action: Action) => {
@@ -89,21 +92,21 @@ const reducer = (state: State, action: Action) => {
     case ActionType.API_ERROR:
       return { ...state, apiState: ApiState.ERROR, apiError: action.payload };
 
-    case ActionType.KEYRING_INIT:
-      return { ...state, keyringState: KeyringState.LOADING };
+    case ActionType.EXTENSION_INIT:
+      return { ...state, extensionState: ExtensionState.LOADING };
 
-    case ActionType.KEYRING_READY:
+    case ActionType.EXTENSION_READY:
       return {
         ...state,
-        keyring: action.payload,
-        keyringState: KeyringState.READY,
+        accounts: action.payload,
+        extensionState: ExtensionState.READY,
       };
 
-    case ActionType.KEYRING_ERROR:
+    case ActionType.EXTENSION_ERROR:
       return {
         ...state,
-        keyringState: KeyringState.ERROR,
-        keyringError: action.payload,
+        extensionState: ExtensionState.ERROR,
+        extensionError: action.payload,
       };
 
     default:
@@ -117,7 +120,7 @@ export function SubstrateProvider({
   children,
   apiOptions,
   appName = 'Litentry dApp',
-  loadDevelopmentAccounts = false,
+  ss58Format,
 }: SubstrateProviderProps): JSX.Element {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
@@ -140,25 +143,25 @@ export function SubstrateProvider({
   useEffect(() => {
     let unsub: Unsubcall | void;
 
-    if (!state.keyringState) {
-      dispatch({ type: ActionType.KEYRING_INIT });
+    if (!state.extensionState) {
+      dispatch({ type: ActionType.EXTENSION_INIT });
 
       loadAccounts({
         appName,
-        loadDevelopmentAccounts,
-        subscribe: (keyring) =>
-          dispatch({ type: ActionType.KEYRING_READY, payload: keyring }),
+        ss58Format,
+        subscribe: (accounts) =>
+          dispatch({ type: ActionType.EXTENSION_READY, payload: accounts }),
       })
         .then((_unsub) => (unsub = _unsub))
         .catch((err) =>
-          dispatch({ type: ActionType.KEYRING_ERROR, payload: err })
+          dispatch({ type: ActionType.EXTENSION_ERROR, payload: err })
         );
     }
 
     return () => {
       unsub && unsub();
     };
-  }, [state.keyringState]);
+  }, [state.extensionState]);
 
   return (
     <SubstrateContext.Provider value={state}>

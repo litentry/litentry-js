@@ -1,14 +1,16 @@
-import type { Unsubcall } from '@polkadot/extension-inject/types';
-import keyring, { Keyring } from '@polkadot/ui-keyring';
+import type {
+  Unsubcall,
+  InjectedAccountWithMeta,
+} from '@polkadot/extension-inject/types';
 
 export async function loadAccounts({
   appName,
-  loadDevelopmentAccounts,
   subscribe,
+  ss58Format,
 }: {
   appName: string;
-  loadDevelopmentAccounts: boolean;
-  subscribe: (keyring: Keyring) => void;
+  subscribe: (accounts: InjectedAccountWithMeta[]) => void;
+  ss58Format?: number;
 }): Promise<Unsubcall | void> {
   // we have to load this async so references to window don't break server rendered apps
   const { web3Enable, web3AccountsSubscribe } = await import(
@@ -17,8 +19,5 @@ export async function loadAccounts({
 
   await web3Enable(appName);
 
-  return web3AccountsSubscribe((allAccounts) => {
-    keyring.loadAll({ isDevelopment: loadDevelopmentAccounts }, allAccounts);
-    subscribe(keyring);
-  });
+  return web3AccountsSubscribe(subscribe, { ss58Format });
 }
